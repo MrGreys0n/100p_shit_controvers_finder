@@ -1,0 +1,64 @@
+from bs4 import BeautifulSoup as bs
+import requests
+import fake_useragent
+import math
+import webbrowser
+
+EMAIL = 'SKurator4@noemail.com'
+PASSWORD = 'SKurator4@noemail.com'
+
+def get_pages(session, header):
+    hw_url = 'https://api.100points.ru/exchange/index?status=is_controversial'
+    hw_responce = session.get(hw_url, headers=header).text
+    hw_soup = bs(hw_responce, "html.parser")
+    pages = math.ceil(int(hw_soup.find('div', class_='dataTables_info').text.split()[-1]) / 15)
+    return pages
+
+def main():
+    session = requests.Session()
+    user = fake_useragent.UserAgent().random
+
+    login_url = "https://api.100points.ru/login"
+
+    header = {'user-agent': user}
+    data = {
+        'email': EMAIL,
+        'password': PASSWORD
+    }
+
+    session.headers.update(header)
+    responce = session.post(login_url, data=data)
+
+    maxx = int(input('Сколько сочинений открыть? '))
+    counter = 0
+
+    #pages = get_pages(session, header)
+    pages = 2
+    btn = 'btn-success'
+    page = 0
+
+    while counter < maxx:
+        page += 1
+        hw_url = 'https://api.100points.ru/exchange/index?status=is_controversial&page={}'.format(page)
+        hw_responce = session.get(hw_url, headers=header).text
+        hw_soup = bs(hw_responce, "html.parser")
+        links = hw_soup.find_all('a', class_='btn btn-xs bg-purple')
+        for i in range(len(links)):
+            links[i] = links[i].get('href')
+
+        for link in links:
+            link_responce = session.get(link, headers=header).text
+            link_soup = bs(link_responce, "html.parser")
+            temp = [t.text for t in link_soup.find_all('b')]
+            if 'Не найден куратор' in temp:
+                print(link_soup.find_all('input', class_='form-control')[2].get('value'))
+                counter += 1
+                '''input('Нажать и принять')
+                driver = webdriver.Firefox()
+                driver.get(link)
+                element = driver.find_element_by_css_selector(btn)
+                print(element)'''
+                webbrowser.open(link, new=2, autoraise=True)
+
+if __name__ == '__main__':
+    main()
